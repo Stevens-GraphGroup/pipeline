@@ -122,7 +122,7 @@ public class HMMERIterator implements SortedKeyValueIterator<Key,Value> {
       long max = Runtime.getRuntime().maxMemory();
       long avail = Runtime.getRuntime().totalMemory();
 
-      System.out.printf("Runtime: Free %,9d Max %,9d Avail %,d\n",free,(max == Long.MAX_VALUE ? "no limit" : max),avail);
+      System.out.printf("Runtime: Free %,9d Max %,9d Avail %,d\n",free,(max == Long.MAX_VALUE ? -2 : max),avail);
       topKey = new Key(k);
       topValue = hmmerAttachBool(accIDs.toArray(new String[accIDs.size()]),
                rawSeqs.toArray(new String[rawSeqs.size()]));
