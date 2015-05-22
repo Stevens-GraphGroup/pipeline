@@ -1,9 +1,6 @@
 package edu.stevens.dhutchis.accumuloiter;
 
-import org.apache.accumulo.core.data.ByteSequence;
-import org.apache.accumulo.core.data.Key;
-import org.apache.accumulo.core.data.Range;
-import org.apache.accumulo.core.data.Value;
+import org.apache.accumulo.core.data.*;
 import org.apache.accumulo.core.iterators.IteratorEnvironment;
 import org.apache.accumulo.core.iterators.SortedKeyValueIterator;
 import org.apache.commons.lang.SerializationUtils;
@@ -85,7 +82,7 @@ public class HMMERIterator implements SortedKeyValueIterator<Key,Value> {
 
     HashMap<String,String> map = new HashMap<>(rawSeqs.length);
     for (int i = 0; i < rawSeqs.length; i++) {
-      map.put(accIDs[i], (booleans[i] ? '1' : '0') + rawSeqs[i]);
+      map.put(accIDs[i], (booleans[i] ? "1" : "0") /*+ rawSeqs[i]*/);
     }
 
     byte[] bytes = SerializationUtils.serialize(map);
@@ -117,16 +114,44 @@ public class HMMERIterator implements SortedKeyValueIterator<Key,Value> {
       rawSeqs.add(rawSeq);
     }
     if (rawSeqs.size() > 0) {
-      System.out.printf("hmmerAttachBool: rawSeqs.length= %5d numBytes= %9d Thread= %s\n", rawSeqs.size(), numBytes, Thread.currentThread().getName());
-      long free = Runtime.getRuntime().freeMemory();
-      long max = Runtime.getRuntime().maxMemory();
-      long avail = Runtime.getRuntime().totalMemory();
+//      System.out.printf("hmmerAttachBool: rawSeqs.length= %5d numBytes= %9d Thread= %s\n", rawSeqs.size(), numBytes, Thread.currentThread().getName());
+//      long free = Runtime.getRuntime().freeMemory();
+//      long max = Runtime.getRuntime().maxMemory();
+//      long avail = Runtime.getRuntime().totalMemory();
 
-      System.out.printf("Runtime: Free %,9d Max %,9d Avail %,d\n",free,(max == Long.MAX_VALUE ? -2 : max),avail);
+//      System.out.printf("Runtime: Free %,9d Max %,9d Avail %,d\n",free,(max == Long.MAX_VALUE ? -2 : max),avail);
       topKey = new Key(k);
       topValue = hmmerAttachBool(accIDs.toArray(new String[accIDs.size()]),
                rawSeqs.toArray(new String[rawSeqs.size()]));
     }
+  }
+
+  /**
+   * Call next() on skvi until getTopKey() advances >= keyToSkipTo (in terms of pk), or until !hasTop().
+   * Calls seek() if this takes a while, say greater than 10 next() calls.
+   *
+   * @return True if advanced to a new key; false if !hasTop().
+   */
+  static boolean skipUntil(SortedKeyValueIterator<Key, Value> skvi, Key keyToSkipTo,
+                           Range seekRange, Collection<ByteSequence> columnFamilies, boolean inclusive) throws IOException {
+    /** Call seek() if using this many next() calls does not get us to rowToSkipTo */
+    final int MAX_NEXT_ATTEMPT = 10;
+    int cnt;
+    for (cnt = 0;
+         cnt < MAX_NEXT_ATTEMPT && skvi.hasTop() && keyToSkipTo.compareTo(skvi.getTopKey()) > 0;
+         cnt++) {
+        skvi.next();
+    }
+    if (skvi.hasTop() && keyToSkipTo.compareTo(skvi.getTopKey()) > 0) {
+      // set target range to beginning of pk
+      Range skipToRange = new Range(keyToSkipTo, true, null, false)
+          .clip(seekRange, true);
+      if (skipToRange == null) // row we want to get to does not exist, and it is out of our range
+        return false;
+      skvi.seek(skipToRange, columnFamilies, inclusive);
+    }
+
+    return skvi.hasTop();
   }
 
 

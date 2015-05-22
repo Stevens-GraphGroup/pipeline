@@ -150,7 +150,6 @@ public class Wrap {
     long startTime = System.currentTimeMillis();
 
     System.load("/home/echerin/ppp/pipeline/src/main/java/edu/stevens/dhutchis/accumuloiter/Wrap.so");
-    Wrap wrap = new Wrap();
     String hmm_path = "/home/echerin/48.hmm";
 
 
@@ -162,7 +161,7 @@ public class Wrap {
     int numThreads = threadNumber;
 
     Scanner scan = conn.createScanner(TseqT, Authorizations.EMPTY);
-    scan.setRange(new Range(taxon ,taxon + "~"));
+    scan.setRange(new Range(taxon, taxon + "~"));
 
     BatchScanner batScan = conn.createBatchScanner(TseqRaw, Authorizations.EMPTY, numThreads);
 
@@ -193,7 +192,7 @@ public class Wrap {
           if(numBytes > iterGPUMaxNumBytes)// break up the batch if the
           {
             startComputeTime = System.currentTimeMillis();
-            wrap.seqpass( rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
+            Wrap.seqpass( rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
             computeTime += System.currentTimeMillis() - startComputeTime;
             rawSeq.clear();
             numBytes = 0;
@@ -202,7 +201,7 @@ public class Wrap {
         if(!rawSeq.isEmpty())
         {
           startComputeTime = System.currentTimeMillis();
-          wrap.seqpass(rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
+          Wrap.seqpass(rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
           computeTime += System.currentTimeMillis() - startComputeTime;
           rawSeq.clear();
         }
@@ -234,7 +233,7 @@ public class Wrap {
         if(numBytes > iterGPUMaxNumBytes)// break up the batch if the
         {
           startComputeTime = System.currentTimeMillis();
-          wrap.seqpass( rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
+          Wrap.seqpass( rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
           computeTime += System.currentTimeMillis() - startComputeTime;
           rawSeq.clear();
           numBytes = 0;
@@ -243,7 +242,7 @@ public class Wrap {
       if(!rawSeq.isEmpty())
       {
         startComputeTime = System.currentTimeMillis();
-        wrap.seqpass(rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
+        Wrap.seqpass(rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
         computeTime += System.currentTimeMillis() - startComputeTime;
         rawSeq.clear();
       }
@@ -266,23 +265,23 @@ public class Wrap {
     Map<String, String> options = new HashMap<>();
     options.put("hmm_path", hmm_path);
     options.put("rowRanges", GraphuloUtil.rangesToD4MString(accList));
-    options.put("batchSize",Integer.toString(iterBatchSize));
+    options.put("batchSize",Integer.toString(9999999));
     options.put("maxNumBytes", Long.toString(iterGPUMaxNumBytes));
     IteratorSetting itset = new IteratorSetting(18, HMMERIterator.class, options);
     batScan.addScanIterator(itset);
 
     for (Map.Entry<Key, Value> batEntry : batScan) {
 //      System.out.println("A Entry: " + batEntry.getKey() + " -> " + batEntry.getValue());
-      HashMap<String, String> map1 = (HashMap<String, String>) SerializationUtils.deserialize(batEntry.getValue().get());
+//      HashMap<String, String> map1 = (HashMap<String, String>) SerializationUtils.deserialize(batEntry.getValue().get());
 
-      for (Map.Entry<String, String> accToEncodedRawSeq : map1.entrySet()) {
-        String accID = accToEncodedRawSeq.getKey();
-        String tmp = accToEncodedRawSeq.getValue();
-        boolean b = tmp.charAt(0) != '0';
-        String rawSeq = tmp.substring(1);
-//        writer.append("accID=" + accID + "  b=" + b + "  rawSeq=" + rawSeq.length() + " chars");// do something with accID, b, rawSeq
-//                        System.out.println("accID="+accID+"  b="+b+"  rawSeq="+rawSeq.length()+" chars");
-      }
+//      for (Map.Entry<String, String> accToEncodedRawSeq : map1.entrySet()) {
+////        String accID = accToEncodedRawSeq.getKey();
+////        String tmp = accToEncodedRawSeq.getValue();
+////        boolean b = tmp.charAt(0) != '0';
+////        String rawSeq = tmp.substring(1);
+////        writer.append("accID=" + accID + "  b=" + b + "  rawSeq=" + rawSeq.length() + " chars");// do something with accID, b, rawSeq
+////                        System.out.println("accID="+accID+"  b="+b+"  rawSeq="+rawSeq.length()+" chars");
+//      }
     }
   }
 
