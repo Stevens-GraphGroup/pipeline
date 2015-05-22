@@ -106,7 +106,7 @@ public class Wrap {
 
     BatchScanner batScan = conn.createBatchScanner(TseqRaw, Authorizations.EMPTY, numThreads);
     batScan.setRanges(Collections.singleton(new Range()));
-    final String hmm_path = "/home/echerin/48.hmm";
+    final String hmm_path = "/home/echerin/2405.hmm";
 
     List<Range> accList = new ArrayList<>();
     Map<String, String> rawSeqMap = new HashMap<String, String>();
@@ -142,6 +142,121 @@ public class Wrap {
     long totalTime = System.currentTimeMillis() - startTime;
     return Integer.toString(counter) + " " + Long.toString(totalTime - computeTime) + " " + Long.toString(computeTime)+ " " + taxon;
     //taxon string;  how many of taxon was in database; total scan time; total compute time
+  }
+
+  //taken from last commit on April 15th
+  public String taxToRawCompute(Connector conn, String taxon, int accIdSize, int iterBatchSize, long iterGPUMaxNumBytes, int threadNumber) throws AccumuloSecurityException, AccumuloException, TableNotFoundException
+  {
+    long startTime = System.currentTimeMillis();
+
+    System.load("/home/echerin/ppp/pipeline/src/main/java/edu/stevens/dhutchis/accumuloiter/Wrap.so");
+    Wrap wrap = new Wrap();
+    String hmm_path = "/home/echerin/48.hmm";
+
+
+    int batchSize = accIdSize;
+    //System.out.println("entered tax to raw");
+    // Setup BatchScanner to read rows that contain the accession numbers from TseqRaw, using 1 thread
+    String TseqT = "TseqT";
+    String TseqRaw = "TseqRaw";
+    int numThreads = threadNumber;
+
+    Scanner scan = conn.createScanner(TseqT, Authorizations.EMPTY);
+    scan.setRange(new Range(taxon ,taxon + "~"));
+
+    BatchScanner batScan = conn.createBatchScanner(TseqRaw, Authorizations.EMPTY, numThreads);
+
+    List<Range> accList = new ArrayList<>();
+    Map<String,String> rawSeq = new HashMap<String,String>();
+
+    long computeTime = 0; //holds total time it takes to filter the raw sequences
+    long startComputeTime;
+
+    // Do the scan
+    int counter = 0;
+
+
+    for(Map.Entry<Key,Value> entry : scan)
+    {
+      if(counter%batchSize == 0 && counter !=0)// when we have enough ranges
+      {
+        long numBytes=0;
+        batScan.setRanges(accList);
+
+        for(Map.Entry<Key,Value> batEntry : batScan)
+        {
+          String seq = batEntry.getValue().toString();
+          String mykey = batEntry.getKey().toString();
+          rawSeq.put(mykey, seq);
+
+          numBytes += seq.getBytes().length;
+          if(numBytes > iterGPUMaxNumBytes)// break up the batch if the
+          {
+            startComputeTime = System.currentTimeMillis();
+            wrap.seqpass( rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
+            computeTime += System.currentTimeMillis() - startComputeTime;
+            rawSeq.clear();
+            numBytes = 0;
+          }
+        }
+        if(!rawSeq.isEmpty())
+        {
+          startComputeTime = System.currentTimeMillis();
+          wrap.seqpass(rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
+          computeTime += System.currentTimeMillis() - startComputeTime;
+          rawSeq.clear();
+        }
+        accList.clear();
+      }
+
+      String acc = entry.getKey().getColumnQualifier().toString();
+
+      accList.add(new Range(acc));
+
+      counter++;
+    }
+
+
+    //scan the last batch
+    if(!accList.isEmpty())
+    {
+
+      long numBytes=0;
+      batScan.setRanges(accList);
+
+      for(Map.Entry<Key,Value> batEntry : batScan)
+      {
+        String seq = batEntry.getValue().toString();
+        String mykey = batEntry.getKey().toString();
+        rawSeq.put(mykey, seq);
+
+        numBytes += seq.getBytes().length;
+        if(numBytes > iterGPUMaxNumBytes)// break up the batch if the
+        {
+          startComputeTime = System.currentTimeMillis();
+          wrap.seqpass( rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
+          computeTime += System.currentTimeMillis() - startComputeTime;
+          rawSeq.clear();
+          numBytes = 0;
+        }
+      }
+      if(!rawSeq.isEmpty())
+      {
+        startComputeTime = System.currentTimeMillis();
+        wrap.seqpass(rawSeq.values().toArray(new String[rawSeq.size()]), hmm_path);
+        computeTime += System.currentTimeMillis() - startComputeTime;
+        rawSeq.clear();
+      }
+      accList.clear();
+
+    }
+
+    batScan.close();
+    scan.close();
+
+    long totalTime = System.currentTimeMillis() - startTime;
+
+    return Integer.toString(counter) + " " + Long.toString(totalTime - computeTime) + " " + Long.toString(computeTime)+ " " + taxon;
   }
 
   @SuppressWarnings("unchecked")

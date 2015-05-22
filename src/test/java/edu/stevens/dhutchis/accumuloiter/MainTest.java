@@ -102,7 +102,7 @@ public class MainTest {
         Wrap wrap = new Wrap();
         PrintWriter writer = new PrintWriter("lightTest" + new Date( ).toString() + ".txt", "UTF-8");
         String tInput = "taxonomy|Bacteria"; //; Firmicutes; Clostridia"; //contains about 500,000 seqs
-        System.out.println(wrap.taxToRaw(conn, tInput, 80000, 80000, 1000000000, 3));
+        System.out.println(wrap.taxToRaw(conn, tInput, 40000, 40000, 20000000, 3));
     }
 
 
@@ -265,7 +265,7 @@ public class MainTest {
                 //System.out.println("scanning with : " + tInput);
                 if(!used.contains(tInput))
                 {
-                    wrap.taxToRaw(conn, tInput,80000,80000, 1000000000,3);
+                    System.out.println(wrap.taxToRawCompute(conn, tInput,50000,50000, 200000000,3));
                     used.add(tInput);
                 }
             }
